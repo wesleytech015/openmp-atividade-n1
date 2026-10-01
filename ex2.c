@@ -1,35 +1,41 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 #include <omp.h>
 
-#define N 20
+#define TAM 20
+#define MIN 1
+#define MAX 100
 
 int main() {
 
-    int A[N], B[N];
-    char Operacao[N];
-    double Resultado[N];
-    int Thread[N];
+    int A[TAM];
+    int B[TAM];
+    char Operacao[TAM];
+    float Resultado[TAM];
+    int Thread[TAM];
 
-    for (int i = 0; i < N; i++) {
-        A[i] = i + 1;
-        B[i] = (i % 5) + 1;
+    char ops[] = {'+', '-', '*', '/'};
 
-        if (i % 4 == 0)
-            Operacao[i] = '+';
-        else if (i % 4 == 1)
-            Operacao[i] = '-';
-        else if (i % 4 == 2)
-            Operacao[i] = '*';
-        else
-            Operacao[i] = '/';
+    srand(time(NULL));
+
+    // Preenchimento sequencial dos vetores
+    for (int i = 0; i < TAM; i++) {
+        A[i] = MIN + rand() % (MAX - MIN + 1);
+        B[i] = MIN + rand() % (MAX - MIN + 1);
+
+        int op = rand() % 4;
+        Operacao[i] = ops[op];
     }
 
+    // Processamento paralelo com 4 threads
     #pragma omp parallel for num_threads(4)
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < TAM; i++) {
 
         Thread[i] = omp_get_thread_num();
 
         switch (Operacao[i]) {
+
             case '+':
                 Resultado[i] = A[i] + B[i];
                 break;
@@ -43,17 +49,23 @@ int main() {
                 break;
 
             case '/':
-                Resultado[i] = (double) A[i] / B[i];
+                Resultado[i] = (float) A[i] / B[i];
                 break;
         }
     }
 
+    // Exibicao da tabela
     printf("\nIndice\tA\tOperacao\tB\tResultado\tThread\n");
 
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i < TAM; i++) {
+
         printf("%d\t%d\t%c\t\t%d\t%.2f\t\t%d\n",
-               i, A[i], Operacao[i], B[i],
-               Resultado[i], Thread[i]);
+               i,
+               A[i],
+               Operacao[i],
+               B[i],
+               Resultado[i],
+               Thread[i]);
     }
 
     return 0;
@@ -62,26 +74,41 @@ int main() {
 /*
 EXERCICIO 2 - RESPOSTAS
 
-O programa utilizou 4 threads para processar 20 indices.
+Os vetores A e B foram preenchidos sequencialmente com
+20 valores aleatorios entre 1 e 100.
 
-Distribuicao observada:
+O vetor Operacao tambem foi preenchido sequencialmente,
+sorteando uma das quatro operacoes:
++, -, * ou /.
+
+Depois do preenchimento, foi utilizado:
+
+#pragma omp parallel for num_threads(4)
+
+para dividir as 20 iteracoes entre 4 threads.
+
+Cada thread realiza a operacao correspondente ao indice
+processado e seu numero e armazenado no vetor Thread.
+
+Na execucao com distribuicao estatica observada, as
+20 posicoes foram divididas da seguinte forma:
 
 Thread 0: indices 0, 1, 2, 3 e 4
 Thread 1: indices 5, 6, 7, 8 e 9
 Thread 2: indices 10, 11, 12, 13 e 14
 Thread 3: indices 15, 16, 17, 18 e 19
 
-Cada thread processou 5 indices.
+Cada thread processou 5 posicoes.
 
-O #pragma omp parallel for dividiu as iteracoes do laco entre
-as 4 threads.
+Nao foi necessario utilizar critical ou atomic na escrita
+dos vetores Resultado e Thread porque cada iteracao do
+parallel for trabalha com um indice diferente.
 
-Nao foi necessario utilizar critical ou atomic para escrever nos
-vetores Resultado e Thread porque cada iteracao do for trabalha
-com um indice diferente. Assim, cada posicao do vetor e escrita
-por apenas uma thread, evitando disputa pela mesma posicao.
+Assim, cada posicao dos vetores e escrita apenas pela
+thread responsavel por aquela iteracao, evitando que duas
+threads alterem a mesma posicao ao mesmo tempo.
 
-Tabela observada:
+Tabela de distribuicao:
 
 Thread | Indices processados     | Quantidade
 0      | 0, 1, 2, 3, 4          | 5
